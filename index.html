@@ -1,0 +1,2343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hamster Fight Club</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#0B0B0D;
+    --black-2:#141316;
+    --paper:#F2EDE4;
+    --paper-dim:#C9C3B5;
+    --red:#E8362E;
+    --red-dim:#7A1F1B;
+    --toxic:#D4E85C;
+    --concrete:#4A4842;
+    --line: rgba(242,237,228,0.12);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--black);
+    color:var(--paper);
+    font-family:'Inter', sans-serif;
+    overflow-x:hidden;
+  }
+  ::selection{ background:var(--red); color:var(--paper); }
+	
+  a{ color:inherit; text-decoration:none; }
+  img{ max-width:100%; display:block; }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:0 24px; }
+
+  /* ---------- Grain / texture overlay ---------- */
+  .grain{
+    position:fixed; inset:0; pointer-events:none; z-index:999;
+    opacity:0.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- Scoreboard ticker ---------- */
+  .ticker-bar{
+    position:sticky; top:0; z-index:100;
+    background:var(--red);
+    color:var(--black);
+    border-bottom:3px solid var(--black);
+    overflow:hidden;
+    white-space:nowrap;
+  }
+  .ticker-track{
+    display:inline-flex;
+    align-items:center;
+    animation: scroll-left 60s linear infinite;
+    padding:9px 0;
+  }
+  .ticker-track span{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:0.04em;
+    padding:0 28px;
+    border-right:2px solid rgba(11,11,13,0.35);
+  }
+  @keyframes scroll-left{
+    0%{ transform:translateX(0); }
+    100%{ transform:translateX(-50%); }
+  }
+
+  /* ---------- Nav ---------- */
+  header.nav{
+    position:sticky; top:34px; z-index:99;
+    background:rgba(11,11,13,0.88);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-inner{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 24px;
+  }
+  .brand{
+    display:flex; align-items:center; gap:10px;
+    font-family:'Anton', sans-serif;
+    font-size:18px;
+    letter-spacing:0.01em;
+    white-space:nowrap;
+  }
+  .brand .glove{
+    width:30px; height:30px; border-radius:50%;
+    background:var(--red);
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px;
+    box-shadow: 0 0 0 2px var(--black), 0 0 0 3px var(--red);
+  }
+  nav.links{ display:flex; gap:32px; }
+  nav.links a{
+    font-size:13px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--paper-dim);
+    position:relative;
+    padding-bottom:2px;
+    transition:color .2s ease;
+  }
+  nav.links a:hover{ color:var(--paper); }
+  nav.links a::after{
+    content:''; position:absolute; left:0; bottom:-4px; width:0; height:2px; background:var(--toxic);
+    transition:width .25s ease;
+  }
+  nav.links a:hover::after{ width:100%; }
+
+  .btn-buy{
+    background:var(--toxic);
+    color:var(--black);
+    font-weight:800;
+    font-size:13px;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    padding:10px 22px;
+    border-radius:2px;
+    transition:transform .15s ease;
+    display:inline-block;
+  }
+  .btn-buy:hover{ transform:translateY(-2px); }
+
+  .mobile-toggle{ display:none; }
+
+  /* ---------- Hero ---------- */
+  .hero{
+    position:relative;
+    padding:90px 0 60px;
+    border-bottom:1px solid var(--line);
+    overflow:hidden;
+  }
+  .hero::before{
+    content:'';
+    position:absolute; inset:0;
+    background:
+      radial-gradient(circle at 78% 20%, rgba(232,54,46,0.18), transparent 45%),
+      radial-gradient(circle at 15% 85%, rgba(212,232,92,0.08), transparent 40%);
+    pointer-events:none;
+  }
+  .hero-grid{
+    display:grid;
+    grid-template-columns:1.1fr 0.9fr;
+    gap:48px;
+    align-items:center;
+    position:relative;
+  }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--toxic);
+    border:1px solid rgba(212,232,92,0.35);
+    padding:6px 12px;
+    border-radius:20px;
+    margin-bottom:22px;
+  }
+  .eyebrow .dot{ width:6px; height:6px; background:var(--toxic); border-radius:50%; animation:pulse 1.6s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+  h1.hero-title{
+    font-size:clamp(48px, 7vw, 92px);
+    line-height:0.92;
+    color:var(--paper);
+  }
+  h1.hero-title .stroke{
+    -webkit-text-stroke: 2px var(--paper);
+    color:transparent;
+  }
+  h1.hero-title .red{ color:var(--red); }
+
+  .hero-sub{
+    margin-top:22px;
+    font-size:17px;
+    line-height:1.6;
+    color:var(--paper-dim);
+    max-width:460px;
+  }
+  .hero-cta{
+    margin-top:32px;
+    display:flex; gap:14px; flex-wrap:wrap;
+  }
+  .btn-primary{
+    background:var(--red);
+    color:var(--paper);
+    font-weight:800;
+    font-size:14px;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    padding:16px 30px;
+    border-radius:2px;
+    box-shadow: 4px 4px 0 var(--paper);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .btn-primary:hover{ transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--paper); }
+  .btn-secondary{
+    border:2px solid var(--paper);
+    color:var(--paper);
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    padding:14px 28px;
+    border-radius:2px;
+    transition:background .2s ease, color .2s ease;
+  }
+  .btn-secondary:hover{ background:var(--paper); color:var(--black); }
+
+  /* ---------- CA copy bar ---------- */
+  .ca-bar{
+    margin-top:26px;
+    display:inline-flex;
+    align-items:center;
+    gap:0;
+    border:1px solid var(--line);
+    background:var(--black-2);
+    max-width:100%;
+  }
+  .ca-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--toxic);
+    padding:12px 14px;
+    border-right:1px solid var(--line);
+    white-space:nowrap;
+  }
+  .ca-value{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    color:var(--paper-dim);
+    padding:12px 14px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    max-width:220px;
+  }
+  .ca-copy{
+    all:unset;
+    cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+    padding:12px 16px;
+    border-left:1px solid var(--line);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    color:var(--black);
+    background:var(--toxic);
+    transition:background .2s ease;
+    white-space:nowrap;
+  }
+  .ca-copy:hover{ background:#c3d64f; }
+  .ca-copy svg{ width:14px; height:14px; flex-shrink:0; }
+  .ca-copy.copied{ background:var(--red); color:var(--paper); }
+
+  @media (max-width:500px){
+    .ca-bar{ flex-wrap:wrap; }
+    .ca-value{ max-width:160px; }
+  }
+
+  /* ---------- Icon platform buttons (community + buy) ---------- */
+  .platform-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+  }
+  .platform-card{
+    background:var(--black-2);
+    border:1px solid var(--line);
+    padding:32px 24px;
+    display:flex; flex-direction:column; align-items:flex-start; gap:16px;
+    transition:border-color .2s ease, transform .2s ease;
+  }
+  .platform-card:hover{ border-color:var(--toxic); transform:translateY(-4px); }
+  .platform-icon{
+    width:52px; height:52px;
+    border-radius:50%;
+    background:var(--black);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .platform-icon svg{ width:24px; height:24px; }
+  .platform-name{
+    font-family:'Archivo Black',sans-serif;
+    font-size:17px;
+    color:var(--paper);
+  }
+  .platform-desc{
+    font-size:13px;
+    color:var(--paper-dim);
+    line-height:1.5;
+    flex:1;
+  }
+  .platform-btn{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;
+    color:var(--toxic);
+    border-bottom:1px solid var(--toxic);
+    padding-bottom:2px;
+  }
+  .platform-btn:hover{ color:var(--paper); border-color:var(--paper); }
+
+  .buy-warning{
+    margin-top:36px;
+    display:flex; align-items:flex-start; gap:12px;
+    background:rgba(232,54,46,0.08);
+    border:1px solid rgba(232,54,46,0.35);
+    padding:18px 20px;
+  }
+  .buy-warning svg{ width:20px; height:20px; flex-shrink:0; color:var(--red); }
+  .buy-warning p{ font-size:13px; line-height:1.6; color:var(--paper-dim); }
+  .buy-warning strong{ color:var(--paper); }
+
+  /* ---------- Onsite swap embed (Jupiter Plugin) ---------- */
+  .swap-embed-block{
+    margin-top:32px;
+    border:1px solid var(--line);
+    background:var(--black-2);
+    padding:32px;
+  }
+  .swap-embed-head h3{
+    font-family:'Archivo Black',sans-serif;
+    font-size:20px;
+    color:var(--paper);
+    margin-bottom:8px;
+  }
+  .swap-embed-head p{
+    font-size:14px;
+    color:var(--paper-dim);
+    line-height:1.6;
+    max-width:560px;
+    margin-bottom:24px;
+  }
+  .jupiter-swap-container{
+    min-height:200px;
+    max-height:520px;
+    max-width:420px;
+    margin:0 auto;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--black);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow-y:auto;
+  }
+  .swap-embed-fallback{
+    padding:24px 28px;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+  }
+  .swap-embed-fallback-icon{
+    width:44px; height:44px;
+    color:var(--toxic);
+  }
+  .swap-embed-fallback-icon svg{ width:100%; height:100%; }
+  .swap-embed-fallback p{
+    font-size:13px;
+    line-height:1.65;
+    color:var(--paper-dim);
+    max-width:320px;
+  }
+  .swap-embed-fallback p strong{ color:var(--paper); }
+  @media (max-width:600px){
+    .swap-embed-block{ padding:24px 18px; }
+  }
+
+
+  /* ---------- Music player ---------- */
+  .music-player{
+    display:grid;
+    grid-template-columns:260px 1fr;
+    gap:32px;
+  }
+  .music-art{
+    aspect-ratio:1/1;
+    background:var(--black-2);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .music-art .ph{
+    color:var(--concrete);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    text-align:center;
+    padding:20px;
+  }
+  .music-art img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .music-list{
+    display:flex;
+    flex-direction:column;
+    border:1px solid var(--line);
+  }
+  .track-row{
+    display:grid;
+    grid-template-columns:44px 1fr auto;
+    align-items:center;
+    gap:16px;
+    padding:14px 18px;
+    border-bottom:1px solid var(--line);
+    background:var(--black-2);
+    transition:background .2s ease;
+  }
+  .track-row:last-child{ border-bottom:none; }
+  .track-row.playing{ background:rgba(232,54,46,0.10); }
+  .track-play{
+    all:unset;
+    cursor:pointer;
+    width:36px; height:36px;
+    border-radius:50%;
+    border:1.5px solid var(--paper);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--paper);
+    font-size:13px;
+    flex-shrink:0;
+    transition:background .2s ease, color .2s ease, border-color .2s ease;
+  }
+  .track-play:hover{ border-color:var(--toxic); color:var(--toxic); }
+  .track-row.playing .track-play{
+    background:var(--red);
+    border-color:var(--red);
+    color:var(--paper);
+  }
+  .track-info{ min-width:0; }
+  .track-title{
+    font-family:'Archivo Black',sans-serif;
+    font-size:14px;
+    color:var(--paper);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .track-progress-wrap{
+    margin-top:8px;
+    height:3px;
+    background:var(--line);
+    border-radius:2px;
+    overflow:hidden;
+    cursor:pointer;
+  }
+  .track-progress-bar{
+    height:100%;
+    width:0%;
+    background:var(--toxic);
+    transition:width .1s linear;
+  }
+  .track-meta{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--concrete);
+    white-space:nowrap;
+  }
+
+  /* ---------- Streaming platform links (under music player) ---------- */
+  .stream-links{
+    margin-top:28px;
+    padding-top:24px;
+    border-top:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .stream-links-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--concrete);
+    white-space:nowrap;
+  }
+  .stream-icons{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .stream-icon{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:9px 16px;
+    border:1px solid var(--line);
+    border-radius:24px;
+    color:var(--paper-dim);
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    font-weight:600;
+    transition:border-color .2s ease, color .2s ease, background .2s ease;
+  }
+  .stream-icon svg{ width:16px; height:16px; flex-shrink:0; }
+  .stream-icon:hover{
+    border-color:var(--toxic);
+    color:var(--paper);
+    background:rgba(212,232,92,0.06);
+  }
+  @media (max-width:700px){
+    .music-player{ grid-template-columns:1fr; }
+    .music-art{ max-width:200px; margin:0 auto; }
+    .stream-links{ flex-direction:column; align-items:flex-start; gap:14px; }
+  }
+
+  .hero-art{
+    position:relative;
+    aspect-ratio:1/1;
+    border:3px solid var(--paper);
+    background:var(--black-2);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:10px 10px 0 var(--red-dim);
+  }
+  .hero-art::before{
+    content:'';
+    position:absolute;
+    inset:-24px;
+    background:radial-gradient(circle, rgba(232,54,46,0.35), transparent 65%);
+    z-index:-1;
+    animation:hero-glow 3.2s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes hero-glow{
+    0%,100%{ opacity:0.55; transform:scale(1); }
+    50%{ opacity:0.9; transform:scale(1.06); }
+  }
+  .hero-img-wrap{
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    position:relative;
+  }
+  .hero-img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center 20%;
+    display:block;
+    filter: contrast(1.08) saturate(1.15);
+    transition: transform .5s ease, filter .5s ease;
+  }
+  .hero-art:hover .hero-img{
+    transform:scale(1.05);
+    filter: contrast(1.14) saturate(1.3);
+  }
+  .hero-img-wrap::after{
+    content:'';
+    position:absolute; inset:0;
+    background:
+      radial-gradient(circle at 50% 100%, rgba(232,54,46,0.25), transparent 55%),
+      linear-gradient(180deg, rgba(11,11,13,0) 55%, rgba(11,11,13,0.55) 100%);
+    mix-blend-mode:multiply;
+    pointer-events:none;
+  }
+  .hero-img-wrap::before{
+    content:'';
+    position:absolute; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity:0.10;
+    mix-blend-mode:overlay;
+    pointer-events:none;
+    z-index:2;
+  }
+  .corner-tag{
+    position:absolute; top:-14px; left:-14px;
+    background:var(--toxic); color:var(--black);
+    font-family:'Anton',sans-serif;
+    font-size:13px;
+    padding:6px 12px;
+    transform:rotate(-6deg);
+    z-index:3;
+  }
+
+  /* ---------- Tale of the tape stat strip ---------- */
+  .tape{
+    border-bottom:1px solid var(--line);
+    background:var(--black-2);
+  }
+  .tape-inner{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+  }
+  .tape-cell{
+    padding:26px 20px;
+    text-align:center;
+    border-right:1px solid var(--line);
+  }
+  .tape-cell:last-child{ border-right:none; }
+  .tape-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--concrete);
+    margin-bottom:8px;
+  }
+  .tape-value{
+    font-family:'Anton',sans-serif;
+    font-size:28px;
+    color:var(--paper);
+  }
+  .tape-value.accent{ color:var(--toxic); }
+
+  /* ---------- Section shell ---------- */
+  section{ padding:90px 0; }
+  .section-head{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    margin-bottom:44px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:20px;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  .section-num{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    color:var(--red);
+    letter-spacing:0.08em;
+    display:block;
+    margin-bottom:6px;
+  }
+  h2.section-title{
+    font-size:clamp(30px,4vw,46px);
+    color:var(--paper);
+  }
+  h2.section-title .accent{ color:var(--toxic); }
+  .section-link{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    font-weight:600;
+    color:var(--paper-dim);
+    border-bottom:1px solid var(--concrete);
+    padding-bottom:2px;
+    white-space:nowrap;
+  }
+  .section-link:hover{ color:var(--toxic); border-color:var(--toxic); }
+
+  /* ---------- News cards ---------- */
+  .news-grid{
+    display:grid;
+    grid-template-columns:1.3fr 1fr 1fr;
+    gap:20px;
+  }
+  .card{
+    background:var(--black-2);
+    border:1px solid var(--line);
+    display:flex; flex-direction:column;
+    transition:border-color .2s ease, transform .2s ease;
+  }
+  .card:hover{ border-color:var(--red); transform:translateY(-4px); }
+  .card-media{
+    aspect-ratio:16/10;
+    background:linear-gradient(135deg, #1a1a1d, #0e0e10);
+    display:flex; align-items:center; justify-content:center;
+    border-bottom:1px solid var(--line);
+    position:relative;
+    overflow:hidden;
+  }
+  .card-media .tag{
+    position:absolute; top:12px; left:12px;
+    background:var(--red); color:var(--paper);
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+    padding:4px 9px;
+  }
+  .card-media .ph{ color:var(--concrete); font-family:'JetBrains Mono',monospace; font-size:11px; text-align:center; padding:20px;}
+  .card-media img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .card-body{ padding:20px; flex:1; display:flex; flex-direction:column; }
+  .card-date{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--concrete);
+    margin-bottom:10px;
+    letter-spacing:0.04em;
+  }
+  .card-title{
+    font-family:'Archivo Black', sans-serif;
+    font-size:18px;
+    line-height:1.25;
+    color:var(--paper);
+    margin-bottom:10px;
+  }
+  .card-desc{
+    font-size:14px;
+    line-height:1.55;
+    color:var(--paper-dim);
+    flex:1;
+  }
+  .news-grid .card:first-child{ grid-row: span 2; }
+  .news-grid .card:first-child .card-media{ aspect-ratio:16/13; }
+
+  /* ---------- Art gallery ---------- */
+  .art-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:4px;
+  }
+  .art-tile{
+    aspect-ratio:1/1;
+    background:var(--black-2);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+    overflow:hidden;
+    cursor:pointer;
+  }
+  .art-tile::after{
+    content:'';
+    position:absolute; inset:0;
+    background:linear-gradient(to top, rgba(232,54,46,0.85), transparent 60%);
+    opacity:0; transition:opacity .25s ease;
+  }
+  .art-tile:hover::after{ opacity:1; }
+  .art-tile .ph{ color:var(--concrete); font-family:'JetBrains Mono',monospace; font-size:11px; }
+  .art-tile img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .art-tile .art-label{
+    position:absolute; bottom:12px; left:12px;
+    font-family:'Archivo Black',sans-serif;
+    font-size:13px; color:var(--paper);
+    opacity:0; transform:translateY(6px);
+    transition:all .25s ease;
+    z-index:2;
+  }
+  .art-tile:hover .art-label{ opacity:1; transform:translateY(0); }
+
+  /* ---------- Video grid ---------- */
+  .video-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px;
+  }
+  .video-card{ cursor:pointer; }
+  .video-thumb{
+    aspect-ratio:9/12;
+    background:var(--black-2);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+    margin-bottom:10px;
+    overflow:hidden;
+    transition:border-color .2s ease;
+  }
+  .video-card:hover .video-thumb{ border-color:var(--toxic); }
+  .video-thumb img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .play-btn{
+    width:44px; height:44px;
+    border-radius:50%;
+    background:rgba(242,237,228,0.95);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--black);
+    font-size:16px;
+  }
+  .video-title{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--paper-dim);
+    font-weight:500;
+  }
+
+  /* ---------- Whitepaper CTA band ---------- */
+  .wp-band{
+    background:var(--red);
+    color:var(--black);
+    padding:70px 0;
+    position:relative;
+    overflow:hidden;
+  }
+  .wp-band::before{
+    content:'FIGHT THE POWER FIGHT THE POWER FIGHT THE POWER FIGHT THE POWER';
+    position:absolute;
+    top:-6px; left:0;
+    white-space:nowrap;
+    font-family:'Anton',sans-serif;
+    font-size:70px;
+    color:rgba(11,11,13,0.06);
+    letter-spacing:0.02em;
+  }
+  .wp-inner{
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:24px;
+    position:relative;
+  }
+  .wp-inner h3{
+    font-size:clamp(28px,4vw,42px);
+    max-width:520px;
+    line-height:1.05;
+  }
+  .wp-inner p{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    margin-top:12px;
+    max-width:480px;
+    font-weight:600;
+  }
+  .btn-dark{
+    background:var(--black);
+    color:var(--paper);
+    font-weight:800;
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    padding:16px 30px;
+    border-radius:2px;
+    white-space:nowrap;
+  }
+  .btn-dark:hover{ background:var(--black-2); }
+
+  /* ---------- Roadmap ---------- */
+  .roadmap{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:0;
+    position:relative;
+  }
+  .roadmap::before{
+    content:'';
+    position:absolute;
+    top:22px; left:0; right:0;
+    height:2px;
+    background:var(--line);
+  }
+  .rm-phase{
+    padding:0 20px 0 0;
+    position:relative;
+  }
+  .rm-phase:first-child{ padding-left:0; }
+  .rm-dot{
+    width:44px; height:44px;
+    border-radius:50%;
+    background:var(--black-2);
+    border:2px solid var(--red);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Anton',sans-serif;
+    font-size:16px;
+    color:var(--red);
+    margin-bottom:24px;
+    position:relative; z-index:1;
+  }
+  .rm-phase.done .rm-dot{ background:var(--toxic); border-color:var(--toxic); color:var(--black); }
+  .rm-status{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--concrete);
+    margin-bottom:6px;
+  }
+  .rm-phase.done .rm-status{ color:var(--toxic); }
+  .rm-title{
+    font-family:'Archivo Black',sans-serif;
+    font-size:16px;
+    margin-bottom:14px;
+    line-height:1.3;
+  }
+  .rm-list{
+    list-style:none;
+    font-size:13px;
+    color:var(--paper-dim);
+    line-height:2;
+  }
+  .rm-list li::before{
+    content:'—';
+    color:var(--concrete);
+    margin-right:8px;
+  }
+
+  /* ---------- FAQ ---------- */
+  .faq-list{ max-width:760px; }
+  .faq-item{
+    border-bottom:1px solid var(--line);
+  }
+  .faq-q{
+    padding:22px 0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+    font-family:'Archivo Black',sans-serif;
+    font-size:16px;
+    color:var(--paper);
+  }
+  .faq-q .plus{
+    font-family:'JetBrains Mono',monospace;
+    color:var(--red);
+    font-size:20px;
+    transition:transform .25s ease;
+  }
+  .faq-item.open .plus{ transform:rotate(45deg); }
+  .faq-a{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height .3s ease;
+    font-size:14px;
+    color:var(--paper-dim);
+    line-height:1.6;
+  }
+  .faq-item.open .faq-a{ max-height:200px; padding-bottom:22px; }
+
+  /* ---------- Footer ---------- */
+  footer{
+    border-top:1px solid var(--line);
+    padding:50px 0 30px;
+    background:var(--black-2);
+  }
+  .footer-top{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    flex-wrap:wrap; gap:30px;
+    margin-bottom:40px;
+  }
+  .footer-brand{ font-family:'Anton',sans-serif; font-size:22px; }
+  .footer-social{ display:flex; gap:14px; }
+  .footer-social a{
+    width:38px; height:38px;
+    border:1px solid var(--line);
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px;
+    transition:border-color .2s ease, color .2s ease;
+    color:var(--paper-dim);
+  }
+  .footer-social a:hover{ border-color:var(--toxic); color:var(--toxic); }
+  .footer-bottom{
+    display:flex; justify-content:space-between; align-items:center;
+    padding-top:24px; border-top:1px solid var(--line);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px; color:var(--concrete);
+    flex-wrap:wrap; gap:10px;
+  }
+  .disclaimer{
+    max-width:600px;
+  }
+
+  /* ---------- Annotation callouts (design-review mode) ---------- */
+  .note{
+    position:absolute;
+    background:var(--toxic);
+    color:var(--black);
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    font-weight:700;
+    padding:3px 8px;
+    border-radius:3px;
+    z-index:50;
+    white-space:nowrap;
+  }
+
+  /* ---------- Filter tabs ---------- */
+  .filter-tabs{
+    display:flex; gap:10px; flex-wrap:wrap;
+    margin-bottom:28px;
+  }
+  .filter-tab{
+    all:unset;
+    cursor:pointer;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:var(--paper-dim);
+    border:1px solid var(--line);
+    padding:8px 16px;
+    border-radius:20px;
+    transition: all .2s ease;
+  }
+  .filter-tab:hover{ border-color:var(--paper-dim); color:var(--paper); }
+  .filter-tab.active{
+    background:var(--toxic);
+    border-color:var(--toxic);
+    color:var(--black);
+  }
+  .art-tile.hidden, .video-card.hidden{ display:none; }
+
+  /* ---------- View more / show less items ---------- */
+  .more-item{ display:none; }
+  .more-item.revealed{ display:flex; }
+  .art-tile.more-item.revealed{ display:flex; }
+  .card.more-item.revealed{ display:flex; }
+  .view-more-btn{
+    all:unset;
+    cursor:pointer;
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    font-weight:600;
+    color:var(--paper-dim);
+    border-bottom:1px solid var(--concrete);
+    padding-bottom:2px;
+    white-space:nowrap;
+  }
+  .view-more-btn:hover{ color:var(--toxic); border-color:var(--toxic); }
+
+  .grid-footer{
+    display:flex; justify-content:center;
+    margin-top:34px;
+  }
+  .btn-load{
+    all:unset;
+    cursor:pointer;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+    border:1px solid var(--paper);
+    color:var(--paper);
+    padding:12px 28px;
+    transition: background .2s ease, color .2s ease;
+  }
+  .btn-load:hover{ background:var(--paper); color:var(--black); }
+
+  .duration-badge{
+    position:absolute; bottom:10px; right:10px;
+    background:rgba(11,11,13,0.85);
+    color:var(--paper);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px; font-weight:600;
+    padding:2px 7px;
+    border-radius:3px;
+    z-index:2;
+  }
+  .art-submit-cta{
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:16px;
+    background:var(--black-2);
+    border:1px dashed var(--concrete);
+    padding:22px 26px;
+    margin-top:28px;
+  }
+  .art-submit-cta p{ font-size:14px; color:var(--paper-dim); }
+  .art-submit-cta p strong{ color:var(--paper); display:block; font-family:'Archivo Black',sans-serif; font-size:15px; margin-bottom:4px; }
+
+  /* ---------- Lightbox (shared: art + video) ---------- */
+  .lightbox-overlay{
+    position:fixed; inset:0;
+    background:rgba(11,11,13,0.92);
+    backdrop-filter:blur(4px);
+    z-index:200;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:70px 20px;
+  }
+  .lightbox-overlay.open{ display:flex; }
+  .lightbox-box{
+    max-width:720px; width:100%;
+    position:relative;
+    animation: modal-in .22s ease;
+  }
+  .lightbox-frame{
+    aspect-ratio:16/10;
+    background:linear-gradient(135deg,#1a1a1d,#0e0e10);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .lightbox-frame.video{ aspect-ratio:9/13; max-width:400px; margin:0 auto; }
+  .lightbox-frame video{ width:100%; height:100%; object-fit:contain; display:block; background:#000; }
+  .lightbox-frame img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .lightbox-caption{
+    margin-top:18px;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    flex-wrap:wrap; gap:10px;
+  }
+  .lightbox-caption h4{
+    font-family:'Archivo Black',sans-serif;
+    font-size:17px;
+    color:var(--paper);
+  }
+  .lightbox-caption span{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--concrete);
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+  }
+  .lightbox-close{
+    all:unset;
+    position:absolute;
+    top:-46px; right:0;
+    width:36px; height:36px;
+    border-radius:50%;
+    background:var(--black-2);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    color:var(--paper);
+    font-size:16px;
+  }
+  .lightbox-close:hover{ border-color:var(--red); color:var(--red); }
+  .lightbox-nav{
+    all:unset;
+    position:absolute;
+    top:50%; transform:translateY(-50%);
+    width:44px; height:44px;
+    border-radius:50%;
+    background:rgba(11,11,13,0.7);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    color:var(--paper);
+    font-size:18px;
+    z-index:3;
+  }
+  .lightbox-nav:hover{ border-color:var(--toxic); color:var(--toxic); }
+  .lightbox-nav.prev{ left:-20px; }
+  .lightbox-nav.next{ right:-20px; }
+  @media (max-width:600px){
+    .lightbox-nav.prev{ left:4px; }
+    .lightbox-nav.next{ right:4px; }
+  }
+  .card-open{
+    all:unset;
+    display:flex; flex-direction:column;
+    cursor:pointer;
+    width:100%;
+  }
+  .card-open:focus-visible{
+    outline:2px solid var(--toxic);
+    outline-offset:2px;
+  }
+
+  .modal-overlay{
+    position:fixed; inset:0;
+    background:rgba(11,11,13,0.86);
+    backdrop-filter:blur(4px);
+    z-index:200;
+    display:none;
+    align-items:flex-start;
+    justify-content:center;
+    padding:60px 20px;
+    overflow-y:auto;
+  }
+  .modal-overlay.open{ display:flex; }
+
+  .modal-box{
+    background:var(--black-2);
+    border:1px solid var(--line);
+    max-width:680px;
+    width:100%;
+    position:relative;
+    animation: modal-in .22s ease;
+  }
+  @keyframes modal-in{
+    from{ opacity:0; transform:translateY(14px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  .modal-close{
+    all:unset;
+    position:absolute;
+    top:16px; right:16px;
+    width:36px; height:36px;
+    border-radius:50%;
+    background:var(--black);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    color:var(--paper);
+    font-size:16px;
+    z-index:2;
+    transition:border-color .2s ease, color .2s ease;
+  }
+  .modal-close:hover{ border-color:var(--red); color:var(--red); }
+
+  .modal-media{
+    aspect-ratio:16/9;
+    background:linear-gradient(135deg,#1a1a1d,#0e0e10);
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .modal-media .tag{
+    position:absolute; top:16px; left:16px;
+    background:var(--red); color:var(--paper);
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+    padding:5px 10px;
+  }
+  .modal-media .ph{ color:var(--concrete); font-family:'JetBrains Mono',monospace; font-size:11px; text-align:center; padding:20px; }
+  .modal-media img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+  .modal-body{ padding:32px; }
+  .modal-meta{
+    display:flex; align-items:center; gap:10px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--concrete);
+    letter-spacing:0.04em;
+    margin-bottom:14px;
+  }
+  .modal-meta .sep{ color:var(--line); }
+  .modal-title{
+    font-family:'Archivo Black', sans-serif;
+    font-size:26px;
+    line-height:1.2;
+    color:var(--paper);
+    margin-bottom:18px;
+  }
+  .modal-text{
+    font-size:15px;
+    line-height:1.7;
+    color:var(--paper-dim);
+  }
+  .modal-text p + p{ margin-top:14px; }
+
+  .modal-share{
+    margin-top:28px;
+    padding-top:22px;
+    border-top:1px solid var(--line);
+    display:flex; align-items:center; gap:14px;
+    flex-wrap:wrap;
+  }
+  .modal-share span{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--concrete);
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+  }
+  .share-btn{
+    all:unset;
+    cursor:pointer;
+    width:34px; height:34px;
+    border-radius:50%;
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px;
+    color:var(--paper-dim);
+    transition:border-color .2s ease, color .2s ease;
+  }
+  .share-btn:hover{ border-color:var(--toxic); color:var(--toxic); }
+  .share-copied{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--toxic);
+    opacity:0;
+    transition:opacity .2s ease;
+  }
+  .share-copied.show{ opacity:1; }
+
+  @media (max-width: 860px){
+    nav.links{ display:none; }
+    .hero-grid{ grid-template-columns:1fr; }
+    .hero-art{ order:-1; max-width:280px; margin:0 auto 8px; }
+    .tape-inner{ grid-template-columns:repeat(2,1fr); }
+    .tape-cell:nth-child(2){ border-right:none; }
+    .news-grid{ grid-template-columns:1fr; }
+    .news-grid .card:first-child{ grid-row:auto; }
+    .art-grid{ grid-template-columns:repeat(2,1fr); }
+    .video-grid{ grid-template-columns:repeat(2,1fr); }
+    .roadmap{ grid-template-columns:1fr; gap:40px; }
+    .roadmap::before{ display:none; }
+    .wp-inner{ flex-direction:column; align-items:flex-start; }
+    .platform-grid{ grid-template-columns:1fr; }
+    .ca-bar{ max-width:100%; }
+    .ca-value{ max-width:140px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="grain"></div>
+
+<!-- TICKER -->
+<div class="ticker-bar">
+  <div class="ticker-track">
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+    <span>WEBSITE UNDER CONSTRUCTION</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <div class="brand">Hamster Fight Club</div>
+    <nav class="links">
+      <a href="#news">News</a>
+      <a href="#art">Art</a>
+      <a href="#videos">Videos</a>
+      <a href="#music">Music</a>
+      <a href="#community">Community</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a href="https://raydium.io/swap/?inputMint=sol&outputMint=F9nJsVxZGn3Az7HAXUrLQs2WaWHiKRbNRYfSpRR2UPRC" class="btn-buy">Buy $HFC</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow"><span class="dot"></span> NIH SPENT $3M SO WE COULD BE HERE</div>
+      <h1 class="hero-title">
+        THEY THINK<br>
+        WE ARE <span class="stroke">LAB RATS.</span><br>
+        <span class="red">LET'S TAKE OVER!</span>
+      </h1>
+      <p class="hero-sub">
+        A federally-funded steroid project turned into the most unhinged token on the internet. Hamsters. Boxing gloves. Zero chill. WELCOME TO $HFC.
+      </p>
+      <div class="hero-cta">
+        <a href="https://raydium.io/swap/?inputMint=sol&outputMint=F9nJsVxZGn3Az7HAXUrLQs2WaWHiKRbNRYfSpRR2UPRC" class="btn-primary">Buy $HFC →</a>
+        <a href="https://t.me/+io44QuNs8mowNjFk" class="btn-secondary">Join the Community</a>
+      </div>
+      <div class="ca-bar">
+        <span class="ca-label">CA</span>
+        <span class="ca-value" id="caValue">F9nJsVxZGn3Az7HAXUrLQs2WaWHiKRbNRYfSpRR2UPRC</span>
+        <button class="ca-copy" id="caCopyBtn" onclick="copyCA()">
+          <svg id="caCopyIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span id="caCopyLabel">Copy</span>
+        </button>
+      </div>
+    </div>
+    <div class="hero-art">
+      <div class="corner-tag">EXHIBIT A</div>
+      <img src="hero.jpeg" alt="Hamster Fight Club hero hamster in a leather jacket holding a Fight Club soap bar" class="hero-img">
+    </div>
+  </div>
+</section>
+
+<!-- TALE OF THE TAPE -->
+
+<!-- BUY -->
+<section id="buy">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="section-num">// GET IN</span>
+        <h2 class="section-title">Buy <span class="accent">$HFC</span></h2>
+      </div>
+    </div>
+    <div class="platform-grid">
+      <div class="platform-card">
+        <div class="platform-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--paper)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        </div>
+        <div class="platform-name">DEXScreener</div>
+        <div class="platform-desc">Track live price, volume, and chart activity for $HFC in real time.</div>
+        <a href="https://dexscreener.com/solana/8axpmnryehimmfu89wdhmrgdsrjmvjkbgxmjxemdneh3" class="platform-btn">View Chart →</a>
+      </div>
+      <div class="platform-card">
+        <div class="platform-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--paper)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 3 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="m7 21-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </div>
+        <div class="platform-name">Jupiter</div>
+        <div class="platform-desc">Swap SOL for $HFC directly through Jupiter's aggregated liquidity.</div>
+        <a href="https://jup.ag/?sell=So11111111111111111111111111111111111111112&buy=F9nJsVxZGn3Az7HAXUrLQs2WaWHiKRbNRYfSpRR2UPRC" class="platform-btn">Swap Now →</a>
+      </div>
+      <div class="platform-card">
+        <div class="platform-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--paper)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M8 10h8M8 14h8"/></svg>
+        </div>
+        <div class="platform-name">Raydium</div>
+        <div class="platform-desc">Trade or add liquidity for $HFC on Raydium's AMM pools.</div>
+        <a href="https://raydium.io/swap/?inputMint=sol&outputMint=F9nJsVxZGn3Az7HAXUrLQs2WaWHiKRbNRYfSpRR2UPRC" class="platform-btn">Trade →</a>
+      </div>
+    </div>
+
+    <!-- ONSITE SWAP: Jupiter Plugin (embedded, wallet-native) -->
+    <div class="swap-embed-block">
+      <div class="swap-embed-head">
+        <h3>Swap Without Leaving This Page</h3>
+        <p>Connect your Solana wallet and swap directly below — powered by Jupiter. Your funds never touch our site; the widget talks straight to your wallet.</p>
+      </div>
+      <div id="jupiter-swap-container" class="jupiter-swap-container">
+        <div class="swap-embed-fallback" id="swapFallback">
+          <div class="swap-embed-fallback-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          </div>
+          <p><strong>Live swap widget loads here once deployed.</strong><br>This embedded Jupiter widget needs a real browser session with wallet access and a live Solana RPC connection, so it can't render inside this preview. On your actual deployed site, this box becomes a fully working swap form the moment the page loads.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="buy-warning">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+      <p><strong>Always verify the contract address</strong> against the one pinned in our ticker bar and Telegram description before swapping. Never trust a CA from a comment, DM, or random link.</p>
+    </div>
+  </div>
+</section>
+
+<!-- NEWS -->
+<section id="news">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="section-num">// 01 LATEST</span>
+        <h2 class="section-title">News <span class="accent">&amp; Blog</span></h2>
+      </div>
+      <button class="section-link view-more-btn" id="newsToggle" onclick="toggleMore('news')">View all posts →</button>
+    </div>
+    <div class="news-grid" id="newsGrid">
+      <div class="card">
+        <button class="card-open" data-post="hamsterhood-album" onclick="openPost(this)">
+          <div class="card-media"><span class="tag">New Release</span><img src="images/hamsterhood-cover.jpg" alt="Hamsterhood album cover art"></div>
+          <div class="card-body">
+            <div class="card-date">APR 03, 2026 — MUSIC</div>
+            <div class="card-title">"Hamsterhood" Album Is Out Everywhere</div>
+            <div class="card-desc">Our first full-length hit 23 streaming platforms and stores day one. More drops are already in the works — here's where to listen.</div>
+          </div>
+        </button>
+      </div>
+      <div class="card">
+        <button class="card-open" data-post="lore" onclick="openPost(this)">
+          <div class="card-media"><img src="images/lore.jpg" alt="A Lore to Fight For thumbnail"></div>
+          <div class="card-body">
+            <div class="card-date">JUL 08, 2026 — LORE</div>
+            <div class="card-title">A Lore to Fight For</div>
+            <div class="card-desc">How a $3M taxpayer-funded steroid study became the most unhinged origin story in crypto.</div>
+          </div>
+        </button>
+      </div>
+      <div class="card">
+        <button class="card-open" data-post="1m-market-cap" onclick="openPost(this)">
+          <div class="card-media"><img src="images/1m-market-cap.jpg" alt="$HFC crosses $1M market cap milestone graphic"></div>
+          <div class="card-body">
+            <div class="card-date">NOV 14, 2024 — MILESTONE</div>
+            <div class="card-title">$HFC Crosses $30M Market Cap</div>
+            <div class="card-desc">The hamsterhood showed up. Here's what's next now that we've cleared the first bar.</div>
+          </div>
+        </button>
+      </div>
+      <div class="card">
+        <button class="card-open" data-post="music-catalog" onclick="openPost(this)">
+          <div class="card-media"><img src="images/music-catalog.jpg" alt="Music catalog cover art"></div>
+          <div class="card-body">
+            <div class="card-date">JUN 29, 2026 — MUSIC</div>
+            <div class="card-title">Music Catalog to Date</div>
+            <div class="card-desc">Every track, drop, and remix released so far — all in one place.</div>
+          </div>
+        </button>
+      </div>
+      <div class="card more-item news-more">
+        <button class="card-open" data-post="dex-listing" onclick="openPost(this)">
+          <div class="card-media"><img src="images/dex-listing.jpg" alt="Live on DEXScreener listing announcement"></div>
+          <div class="card-body">
+            <div class="card-date">JUN 24, 2026 — MILESTONE</div>
+            <div class="card-title">Live on DEXScreener</div>
+            <div class="card-desc">$HFC is now trackable in real time. Chart, volume, and holder data all in one place.</div>
+          </div>
+        </button>
+      </div>
+      <div class="card more-item news-more">
+        <button class="card-open" data-post="community-recap-post" onclick="openPost(this)">
+          <div class="card-media"><img src="images/community-recap.jpg" alt="One Month In Recap collage"></div>
+          <div class="card-body">
+            <div class="card-date">JUN 18, 2026 — COMMUNITY</div>
+            <div class="card-title">One Month In: The Hamsterhood Recap</div>
+            <div class="card-desc">A look back at our first month — the memes, the milestones, and what's coming next.</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- POST MODAL -->
+<div class="modal-overlay" id="postModal" onclick="if(event.target===this) closePost()">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button class="modal-close" onclick="closePost()" aria-label="Close">✕</button>
+    <div class="modal-media">
+      <span class="tag" id="modalTag">Category</span>
+      <img id="modalMediaImg" src="" alt="">
+    </div>
+    <div class="modal-body">
+      <div class="modal-meta">
+        <span id="modalDate">APR 03, 2026</span>
+        <span class="sep">/</span>
+        <span id="modalAuthor">HFC Team</span>
+      </div>
+      <h3 class="modal-title" id="modalTitle">Post title</h3>
+      <div class="modal-text" id="modalText"></div>
+      <div class="modal-share">
+        <span>Share</span>
+        <button class="share-btn" onclick="shareTo('x')" aria-label="Share on X">𝕏</button>
+        <button class="share-btn" onclick="shareTo('tg')" aria-label="Share on Telegram">TG</button>
+        <button class="share-btn" onclick="shareTo('copy')" aria-label="Copy link">🔗</button>
+        <span class="share-copied" id="shareCopied">Link copied</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ART -->
+<section id="art">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="section-num">// 02 GALLERY</span>
+        <h2 class="section-title">Fan &amp; <span class="accent">Official Art</span></h2>
+      </div>
+      <a href="#" class="section-link">Full gallery →</a>
+    </div>
+
+    <div class="filter-tabs" id="artTabs">
+      <button class="filter-tab active" data-filter="all" onclick="setArtFilter('all', this)">All</button>
+      <button class="filter-tab" data-filter="official" onclick="setArtFilter('official', this)">Official</button>
+      <button class="filter-tab" data-filter="fan" onclick="setArtFilter('fan', this)">official</button>
+      <button class="filter-tab" data-filter="official" onclick="setArtFilter('official', this)">official</button>
+    </div>
+
+    <div class="art-grid" id="artGrid">
+      <div class="art-tile" data-category="official" onclick="openLightbox('art', 0)"> <img src="images/art-plotting.jpg" alt="&quot;Plotting&quot; — official art"><div class="art-label">"Plotting" — official</div></div>
+      <div class="art-tile" data-category="official" onclick="openLightbox('art', 1)"><img src="images/fav-memecoin.jpg" alt="Neon HFC — official"><div class="art-label">HFC is Better — official</div></div>
+      <div class="art-tile" data-category="official" onclick="openLightbox('art', 2)"><img src="images/Inspirational.jpg" alt="Inspirational — official"><div class="art-label">Inspirational — official</div></div>
+      <div class="art-tile" data-category="official" onclick="openLightbox('art', 3)"><img src="images/billboard.jpg" alt="Billboard — official"><div class="art-label">Billboard — official</div></div>
+      <div class="art-tile more-item art-more" data-category="fan" onclick="openLightbox('art', 4)"><img src="images/be-consistent.jpg" alt="Be Consistent — official"><div class="art-label">Be Consistent — official</div></div>
+      <div class="art-tile more-item art-more" data-category="official" onclick="openLightbox('art', 5)"><img src="images/goal.jpg" alt="Goal! — official"><div class="art-label">Goal! — official</div></div>
+      <div class="art-tile more-item art-more" data-category="fan" onclick="openLightbox('art', 6)"><img src="images/place-to-be.jpg" alt="Place To Be — official"><div class="art-label">Place To Be — official</div></div>
+      <div class="art-tile more-item art-more" data-category="official" onclick="openLightbox('art', 7)"><img src="images/not-selling.jpg" alt="Not Selling — official"><div class="art-label">Not Selling — official</div></div>
+    </div>
+
+    <div class="grid-footer"><button class="btn-load" id="artToggle" onclick="toggleMore('art')">Load More Art</button></div>
+
+    <div class="art-submit-cta">
+      <p><strong>Got HFC official?</strong>We feature the best community submissions right here in the gallery.</p>
+      <a href="mailto:art@yourdomain.com?subject=HFC%20Fan%20Art%20Submission&body=Name%2FHandle%3A%0AArt%20title%3A%0ALink%20or%20attachment%3A%0A" class="btn-secondary">Submit Your Art →</a>
+    </div>
+  </div>
+</section>
+
+<!-- VIDEOS -->
+<section id="videos">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="section-num">// 03 WATCH</span>
+        <h2 class="section-title">Video <span class="accent">Clips</span></h2>
+      </div>
+      <a href="#" class="section-link">All videos →</a>
+    </div>
+
+    <div class="filter-tabs" id="videoTabs">
+      <button class="filter-tab active" data-filter="all" onclick="setVideoFilter('all', this)">All</button>
+      <button class="filter-tab" data-filter="official" onclick="setVideoFilter('official', this)">official</button>
+      <button class="filter-tab" data-filter="lore" onclick="setVideoFilter('lore', this)">Lore</button>
+      <button class="filter-tab" data-filter="meme" onclick="setVideoFilter('meme', this)">Memes</button>
+    </div>
+
+    <div class="video-grid" id="videoGrid">
+      <div class="video-card" data-category="promo" onclick="openLightbox('video', 0)">
+        <div class="video-thumb"><img src="images/thumbnail/promote-v1.avif" alt="Lore Trailer thumbnail"><div class="play-btn">▶</div><span class="duration-badge">4:02</span></div>
+        <div class="video-title">Lore Trailer</div>
+      </div>
+      <div class="video-card" data-category="lore" onclick="openLightbox('video', 1)">
+        <div class="video-thumb"><img src="images/thumbnail/video-7.avif" alt="NIH Juicing Hamsters thumbnail"><div class="play-btn">▶</div><span class="duration-badge">1:39</span></div>
+        <div class="video-title">NIH Juicing Hamsters</div>
+      </div>
+      <div class="video-card" data-category="promo" onclick="openLightbox('video', 2)">
+        <div class="video-thumb"><img src="images/thumbnail/video-5.avif" alt="Training Montage thumbnail"><div class="play-btn">▶</div><span class="duration-badge">0:49</span></div>
+        <div class="video-title">Training Montage</div>
+      </div>
+      <div class="video-card" data-category="meme" onclick="openLightbox('video', 3)">
+        <div class="video-thumb"><img src="images/thumbnail/video-8.avif" alt="Recap thumbnail"><div class="play-btn">▶</div><span class="duration-badge">0:40</span></div>
+        <div class="video-title">Recap</div>
+      </div>
+      <div class="video-card more-item video-more" data-category="meme" onclick="openLightbox('video', 4)">
+        <div class="video-thumb"><img src="images/video-steroid-szn-meme-cut.jpg" alt="Steroid Szn Meme Cut thumbnail"><div class="play-btn">▶</div><span class="duration-badge">0:19</span></div>
+        <div class="video-title">Steroid Szn Meme Cut</div>
+      </div>
+      <div class="video-card more-item video-more" data-category="lore" onclick="openLightbox('video', 5)">
+        <div class="video-thumb"><img src="images/video-origin-story-2.jpg" alt="Origin Story Pt. 2 thumbnail"><div class="play-btn">▶</div><span class="duration-badge">2:03</span></div>
+        <div class="video-title">Origin Story Pt. 2</div>
+      </div>
+      <div class="video-card more-item video-more" data-category="promo" onclick="openLightbox('video', 6)">
+        <div class="video-thumb"><img src="images/video-album-announcement.jpg" alt="Album Announcement thumbnail"><div class="play-btn">▶</div><span class="duration-badge">0:35</span></div>
+        <div class="video-title">Album Announcement</div>
+      </div>
+      <div class="video-card more-item video-more" data-category="meme" onclick="openLightbox('video', 7)">
+        <div class="video-thumb"><img src="images/video-fight-night-clip.jpg" alt="Fight Night Clip thumbnail"><div class="play-btn">▶</div><span class="duration-badge">0:08</span></div>
+        <div class="video-title">Fight Night Clip</div>
+      </div>
+    </div>
+
+    <div class="grid-footer"><button class="btn-load" id="videoToggle" onclick="toggleMore('video')">Load More Videos</button></div>
+  </div>
+</section>
+
+<!-- ART / VIDEO LIGHTBOX -->
+<div class="lightbox-overlay" id="lightbox" onclick="if(event.target===this) closeLightbox()">
+  <div class="lightbox-box">
+    <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close">✕</button>
+    <button class="lightbox-nav prev" onclick="navLightbox(-1)" aria-label="Previous">‹</button>
+    <button class="lightbox-nav next" onclick="navLightbox(1)" aria-label="Next">›</button>
+    <div class="lightbox-frame" id="lightboxFrame">
+      <img id="lightboxImg" src="" alt="">
+      <video id="lightboxVideo" controls playsinline></video>
+    </div>
+    <div class="lightbox-caption">
+      <div>
+        <h4 id="lightboxTitle">Title</h4>
+      </div>
+      <span id="lightboxMeta">Official</span>
+    </div>
+  </div>
+</div>
+
+<!-- COMMUNITY -->
+<section id="community">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="section-num">// JOIN IN</span>
+        <h2 class="section-title">HFC <span class="accent">Community</span></h2>
+      </div>
+    </div>
+    <div class="platform-grid">
+      <div class="platform-card">
+        <div class="platform-icon">
+          <svg viewBox="0 0 24 24" fill="var(--paper)"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </div>
+        <div class="platform-name">X (Twitter)</div>
+        <div class="platform-desc">Follow for announcements, memes, and the first look at every drop.</div>
+        <a href="https://x.com/HFC_SOL" class="platform-btn">@HamsterFightClub →</a>
+      </div>
+
+      <div class="platform-card">
+        <div class="platform-icon">
+          <svg viewBox="0 0 24 24" fill="var(--paper)"><path d="M21.05 3.16 2.6 10.32c-1.26.5-1.25 1.2-.23 1.51l4.71 1.47 1.82 5.6c.22.6.34.83.7.83.35 0 .5-.16.7-.35l1.9-1.85 4.75 3.5c.87.48 1.5.23 1.72-.8l3.11-14.6c.3-1.26-.48-1.83-1.75-1.47zM8.6 13.6l9.4-8.1c.42-.35-.1-.55-.65-.2l-11.6 7.3-.03.03z"/></svg>
+        </div>
+        <div class="platform-name">Telegram</div>
+        <div class="platform-desc">The main hamsterhood hub — real-time chat, alpha, and support.</div>
+        <a href="https://t.me/HamsterFightClub" class="platform-btn">Join Chat →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MUSIC -->
+<section id="music">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="section-num">// 04 LISTEN</span>
+        <h2 class="section-title">HFC <span class="accent">Music</span></h2>
+      </div>
+      <a href="#" class="section-link">Full catalog →</a>
+    </div>
+
+ <div class="music-player">
+      <div class="music-art">
+        <img src="images/hamsterhood-cover.jpg" alt="&quot;Hamsterhood&quot; album cover">
+      </div>
+      <div class="music-list" id="musicList">
+        <!-- Track rows are rendered by JS from the TRACKS array below,
+             each wired to the single shared <audio> element. -->
+      </div>
+    </div>
+
+    <div class="stream-links">
+      <span class="stream-links-label">Also streaming on</span>
+      <div class="stream-icons">
+        <a href="https://open.spotify.com/artist/0ATPmKrjZkq9pGq0hPhplh?si=7Cz8I_mqQKm7jTNWzfJGzw&utm_source=copy-link" class="stream-icon" aria-label="Listen on Spotify" title="Spotify">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.586 14.424a.622.622 0 0 1-.857.207c-2.348-1.435-5.304-1.76-8.785-.965a.622.622 0 1 1-.277-1.215c3.809-.871 7.077-.496 9.712 1.115a.623.623 0 0 1 .207.858zm1.223-2.723a.78.78 0 0 1-1.072.257c-2.688-1.652-6.786-2.131-9.965-1.166a.78.78 0 0 1-.453-1.492c3.63-1.102 8.147-.568 11.233 1.328a.78.78 0 0 1 .257 1.073zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 1 1-.543-1.79c3.533-1.072 9.404-.865 13.115 1.338a.935.935 0 0 1-.955 1.608z"/></svg>
+          <span>Spotify</span>
+        </a>
+        <a href="https://music.youtube.com/@hfcradio?si=3JVwc0ad-LREIiw3" class="stream-icon" aria-label="Listen on YouTube Music" title="YouTube Music">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 16.5c-3.59 0-6.5-2.91-6.5-6.5S8.41 5.5 12 5.5s6.5 2.91 6.5 6.5-2.91 6.5-6.5 6.5zm0-11.5c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm-1.5 7.5v-5l4 2.5-4 2.5z"/></svg>
+          <span>YouTube Music</span>
+        </a>
+        <a href="https://music.apple.com/us/artist/hamsterhood/1887737699" class="stream-icon" aria-label="Listen on Apple Music" title="Apple Music">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.997 6.124a9.23 9.23 0 0 0-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043A5.022 5.022 0 0 0 19.62.1a5.9 5.9 0 0 0-.94-.086h-13.4a5.9 5.9 0 0 0-.94.086 5.022 5.022 0 0 0-1.957.79 5.14 5.14 0 0 0-2.18 3.043 9.23 9.23 0 0 0-.24 2.19v11.75a9.23 9.23 0 0 0 .24 2.19c.317 1.31 1.062 2.31 2.18 3.043a5.022 5.022 0 0 0 1.957.79 5.9 5.9 0 0 0 .94.086h13.4a5.9 5.9 0 0 0 .94-.086 5.022 5.022 0 0 0 1.957-.79 5.14 5.14 0 0 0 2.18-3.043 9.23 9.23 0 0 0 .24-2.19V6.124zM16.5 6.5c-.13.02-2.36.38-3.55.58-.63.1-1.02.5-1.02 1.2v6.85a1.66 1.66 0 0 0-.5-.08c-.9 0-1.64.62-1.64 1.4s.74 1.4 1.64 1.4 1.64-.62 1.64-1.4V9.36l3.02-.5v4.16a1.66 1.66 0 0 0-.5-.08c-.9 0-1.64.62-1.64 1.4s.74 1.4 1.64 1.4 1.64-.62 1.64-1.4V7.02c0-.32-.1-.55-.7-.52z"/></svg>
+          <span>Apple Music</span>
+        </a>
+      </div>
+    </div>
+
+    <audio id="audioEl" preload="none"></audio>
+  </div>
+</section>
+
+<!-- LORE / WHITEPAPER BAND -->
+<section id="lore" class="wp-band">
+  <div class="wrap wp-inner">
+    <div>
+      <h3>The Whole Whitepaper, Without the Scroll Fatigue.</h3>
+      <p>Origin story, tokenomics, CTO history, and the full roadmap — laid out properly on its own page.</p>
+    </div>
+    <a href="#" class="btn-dark">Read the Whitepaper →</a>
+  </div>
+</section>
+
+
+<!-- ROADMAP -->
+<section id="roadmap">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="section-num">// 04 WHAT'S NEXT</span>
+        <h2 class="section-title">Project <span class="accent">Roadmap</span></h2>
+      </div>
+    </div>
+    <div class="roadmap">
+      <div class="rm-phase done">
+        <div class="rm-dot">✓</div>
+        <div class="rm-status">Complete</div>
+        <div class="rm-title">Birth of the Meme</div>
+        <ul class="rm-list">
+          <li>Define a relatable narrative.</li>
+          <li>Launch on social media platforms.</li>
+          <li>Start giveaways and meme contests to build buzz.</li>
+        </ul>
+      </div>
+      <div class="rm-phase done">
+        <div class="rm-dot">✓</div>
+        <div class="rm-status">Complete</div>
+        <div class="rm-title">Hype Machine Activation</div>
+        <ul class="rm-list">
+          <li>Introduce branding, including logo and mascot.</li>
+          <li>Partner with influencers and meme accounts.</li>
+          <li>Conduct AMA sessions and development-launch teasers.</li>
+        </ul>
+      </div>
+      <div class="rm-phase">
+        <div class="rm-dot">3</div>
+        <div class="rm-status">In Progress</div>
+        <div class="rm-title">Post-Launch Blitzkrieg
+</div>
+        <ul class="rm-list">
+          <li>Celebrate launch with viral challenges and meme contests.
+</li>
+          <li>Introduce NFT collections tied to HFC lore.</li>
+          <li>Share weekly updates and host interactive community events.</li>
+        </ul>
+      </div>
+      <div class="rm-phase">
+        <div class="rm-dot">4</div>
+        <div class="rm-status">Upcoming</div>
+        <div class="rm-title">Meme Empire Rises</div>
+        <ul class="rm-list">
+          <li>NFT collection.</li>
+          <li>Merch drop.</li>
+          <li>Build utility through staking and governance.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <span class="section-num">// 05 QUESTIONS</span>
+        <h2 class="section-title">FAQ</h2>
+      </div>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item open">
+        <div class="faq-q" onclick="toggleFaq(this)">What is the purpose of $HFC? <span class="plus">+</span></div>
+        <div class="faq-a">See White Paper.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Is Hamster Fight Club (HFC)? <span class="plus">+</span></div>
+        <div class="faq-a">HFC is a meme-based cryptocurrency created by the community after a viral government-related meme sparked its concept..</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">How can I buy $HFC? <span class="plus">+</span></div>
+        <div class="faq-a">$HFC is available on decentralized exchanges like Raydium and Jupiter on Solana. More exchange listings to come. Stay tuned for listings on major platforms.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">What Contract Address (CA) is it? <span class="plus">+</span></div>
+        <div class="faq-a">The verified contract address is pinned in the ticker bar at the top of every page and in our official Telegram description — never trust a CA from a comment or DM.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Why was $HFC Created? <span class="plus">+</span></div>
+        <div class="faq-a">To combine humor with a robust crypto project, empowering the community and delivering value through engagement and innovation.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand">Hamster Fight Club</div>
+        <p style="color:var(--paper-dim); font-size:13px; margin-top:8px; max-width:280px;">The hamsterhood is the place to be.</p>
+      </div>
+      <div class="footer-social">
+        <a href="https://x.com/HFC_SOL">𝕏</a>
+        <a href="https://t.me/HamsterFightClub">TG</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Hamster Fight Club. Not affiliated with the NIH.</span>
+      <span class="disclaimer">DYOR.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  function toggleFaq(el){
+    const item = el.parentElement;
+    document.querySelectorAll('.faq-item').forEach(i => { if(i !== item) i.classList.remove('open'); });
+    item.classList.toggle('open');
+  }
+
+  // ---------- News post modal ----------
+  // In production this data would come from markdown/CMS files at build time,
+  // not hardcoded here — this is just illustrating the shape of it.
+  const POSTS = {
+    'hamsterhood-album': {
+      tag: 'New Release',
+      category: 'Music',
+      date: 'APR 03, 2026',
+      author: 'HFC Team',
+      title: '"Hamsterhood" Album Is Out Everywhere',
+      image: 'images/hamsterhood-cover.jpg',
+      imageAlt: 'Hamsterhood album cover art',
+      body: [
+        'Our first full-length album, Hamsterhood, dropped today across 23 streaming platforms and digital stores — from Spotify and Apple Music to the more obscure corners of the internet.',
+        'This is the first of several planned releases. The next single is already in the mixing stage, with a target date announced on our Telegram once it\'s locked.',
+        'Stream it now and let us know your favorite track — the community picks that get the most love may end up soundtracking the next official drop.'
+      ]
+    },
+    'lore': {
+      tag: 'Lore',
+      category: 'Lore',
+      date: 'JUL 08, 2026',
+      author: 'HFC Team',
+      title: 'A Lore to Fight For',
+      image: 'images/lore.jpg',
+      imageAlt: 'A Lore to Fight For thumbnail',
+      body: [
+        'Every great token needs an origin story. Ours happens to be true: a federally funded research study spent millions studying aggression in hamsters given steroids.',
+        'Somewhere between the research papers and the internet, that story turned into a mascot, then a movement. HFC exists because that story deserved a better ending than a filing cabinet.',
+        'Read the full breakdown — sources, study details, and the moment it became a meme — in our whitepaper.'
+      ]
+    },
+    '1m-market-cap': {
+      tag: 'Milestone',
+      category: 'Milestone',
+      date: 'NOV 14, 2024',
+      author: 'HFC Team',
+      title: '$HFC Crosses $30M Market Cap',
+      image: 'images/1m-market-cap.jpg',
+      imageAlt: '$HFC crosses $1M market cap milestone graphic',
+      body: [
+        'Today we crossed a $30M market capitalization milestone, driven overwhelmingly by organic community growth rather than paid officialtion.',
+'This isn\'t the finish line — it\'s a major milestone that clears the way for the next phase of the roadmap, including expanded exchange listings, new partnerships, and everything we\'ve been building toward.',
+'Thank you to everyone in the Hamsterhood who\'s been here since day one. This achievement belongs to all of us. Bigger milestones, faster execution, and much more ahead. 🚀'
+      ]
+    },
+    'music-catalog': {
+      tag: 'Music',
+      category: 'Music',
+      date: 'JUN 29, 2026',
+      author: 'HFC Team',
+      title: 'Music Catalog to Date',
+      image: 'images/music-catalog.jpg',
+      imageAlt: 'Music catalog cover art',
+      body: [
+        'A running list of every track, drop, and remix we\'ve released so far, all in one place for anyone catching up.',
+        'New releases will be added here automatically going forward, so bookmark this one if you want the full catalog at a glance.'
+      ]
+    }
+  };
+
+  const modal = document.getElementById('postModal');
+
+  function renderPost(id){
+    const post = POSTS[id];
+    if(!post) return;
+    document.getElementById('modalTag').textContent = post.tag;
+    const modalImg = document.getElementById('modalMediaImg');
+    modalImg.src = post.image;
+    modalImg.alt = post.imageAlt || post.title;
+    document.getElementById('modalDate').textContent = post.date;
+    document.getElementById('modalAuthor').textContent = post.author;
+    document.getElementById('modalTitle').textContent = post.title;
+    document.getElementById('modalText').innerHTML = post.body.map(p => `<p>${p}</p>`).join('');
+  }
+
+  function openPost(el){
+    const id = el.getAttribute('data-post');
+    renderPost(id);
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    // Deep-linkable: updates the URL without a full navigation/reload
+    const url = new URL(window.location);
+    url.searchParams.set('post', id);
+    window.history.pushState({ post: id }, '', url);
+  }
+
+  function closePost(){
+    modal.classList.remove('open');
+    document.body.style.overflow = '';
+    const url = new URL(window.location);
+    url.searchParams.delete('post');
+    window.history.pushState({}, '', url);
+  }
+
+  function shareTo(kind){
+    const url = window.location.href;
+    if(kind === 'x'){
+      window.open('https://twitter.com/intent/tweet?url=' + encodeURIComponent(url), '_blank');
+    } else if(kind === 'tg'){
+      window.open('https://t.me/share/url?url=' + encodeURIComponent(url), '_blank');
+    } else if(kind === 'copy'){
+      navigator.clipboard?.writeText(url);
+      const el = document.getElementById('shareCopied');
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 1600);
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && modal.classList.contains('open')) closePost();
+  });
+
+  window.addEventListener('popstate', () => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('post');
+    if(id && POSTS[id]){
+      renderPost(id);
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    } else {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  });
+
+  // On load, open directly to a post if the URL already has ?post=slug
+  // (this is what makes a shared modal link actually work for the recipient)
+  (function initFromUrl(){
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('post');
+    if(id && POSTS[id]){
+      renderPost(id);
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+  })();
+
+  // ---------- Gallery / Video filter tabs ----------
+  function setArtFilter(cat, btn){
+    document.querySelectorAll('#artTabs .filter-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('#artGrid .art-tile').forEach(tile => {
+      const match = cat === 'all' || tile.getAttribute('data-category') === cat;
+      const isMoreItem = tile.classList.contains('art-more');
+      const shouldShow = match && (!isMoreItem || moreState.art);
+      tile.classList.toggle('hidden', !shouldShow);
+    });
+  }
+
+  function setVideoFilter(cat, btn){
+    document.querySelectorAll('#videoTabs .filter-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('#videoGrid .video-card').forEach(card => {
+      const match = cat === 'all' || card.getAttribute('data-category') === cat;
+      const isMoreItem = card.classList.contains('video-more');
+      const shouldShow = match && (!isMoreItem || moreState.video);
+      card.classList.toggle('hidden', !shouldShow);
+    });
+  }
+
+  // ---------- View more (News / Art / Videos) ----------
+  // Keeps the homepage to 4 visible items per section; extra items are
+  // marked with class "more-item" in the HTML and revealed here.
+  const moreState = { news: false, art: false, video: false };
+
+  function toggleMore(section){
+    moreState[section] = !moreState[section];
+    const expanded = moreState[section];
+
+    let selector, btn, labelShow, labelHide;
+    if(section === 'news'){
+      selector = '#newsGrid .news-more';
+      btn = document.getElementById('newsToggle');
+      labelShow = 'View all posts →';
+      labelHide = 'Show fewer posts ↑';
+    } else if(section === 'art'){
+      selector = '#artGrid .art-more';
+      btn = document.getElementById('artToggle');
+      labelShow = 'Load More Art';
+      labelHide = 'Show Less Art';
+    } else {
+      selector = '#videoGrid .video-more';
+      btn = document.getElementById('videoToggle');
+      labelShow = 'Load More Videos';
+      labelHide = 'Show Fewer Videos';
+    }
+
+    document.querySelectorAll(selector).forEach(el => {
+      el.classList.toggle('revealed', expanded);
+    });
+    if(btn) btn.textContent = expanded ? labelHide : labelShow;
+
+    // If collapsing, scroll back up to the section header so the person
+    // isn't left staring at a blank spot where the items used to be.
+    if(!expanded){
+      const sectionEl = document.getElementById(section === 'video' ? 'videos' : section);
+      if(sectionEl) sectionEl.scrollIntoView({ behavior:'smooth', block:'start' });
+    }
+  }
+
+  // ---------- Music player ----------
+  // Real build: swap `src` for actual hosted audio files (mp3/aac).
+  // Empty/placeholder src values here just illustrate the UI wiring.
+  const TRACKS = [
+    { title: 'Everything', duration: '2:35', src: 'https://pub-4b9e491cbdd8436ab44aa2a87321ccf1.r2.dev/Everything.mp3' },
+    { title: 'Mindgoes', duration: '4:02', src: 'https://pub-4b9e491cbdd8436ab44aa2a87321ccf1.r2.dev/mindgoes.mp3' },
+    { title: 'Hamsterhood', duration: '2:58', src: 'https://pub-4b9e491cbdd8436ab44aa2a87321ccf1.r2.dev/hamsterhood.mp3' },
+    { title: 'One Fight', duration: '3:38', src: 'https://pub-4b9e491cbdd8436ab44aa2a87321ccf1.r2.dev/one%20fight.mp3' }
+  ];
+
+  const audioEl = document.getElementById('audioEl');
+  const musicList = document.getElementById('musicList');
+  let currentTrack = -1;
+
+  function formatTime(sec){
+    if(!isFinite(sec)) return '0:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  function renderTracks(){
+    musicList.innerHTML = TRACKS.map((t, i) => `
+      <div class="track-row" id="track-${i}">
+        <button class="track-play" onclick="playTrack(${i})" aria-label="Play ${t.title}">▶</button>
+        <div class="track-info">
+          <div class="track-title">${t.title}</div>
+          <div class="track-progress-wrap" onclick="seekTrack(event, ${i})">
+            <div class="track-progress-bar" id="progress-${i}"></div>
+          </div>
+        </div>
+        <div class="track-meta" id="meta-${i}">${t.duration}</div>
+      </div>
+    `).join('');
+  }
+
+  function playTrack(i){
+    if(!TRACKS[i].src){
+      // Placeholder guard: in the real build every track needs a real
+      // audio file at `src` before this button will actually play anything.
+      alert('Audio file not yet attached for "' + TRACKS[i].title + '". Add a src URL in the TRACKS array.');
+      return;
+    }
+    if(currentTrack === i && !audioEl.paused){
+      audioEl.pause();
+      updatePlayingState();
+      return;
+    }
+    if(currentTrack !== i){
+      audioEl.src = TRACKS[i].src;
+      currentTrack = i;
+    }
+    audioEl.play();
+    updatePlayingState();
+  }
+
+  function updatePlayingState(){
+    document.querySelectorAll('.track-row').forEach((row, i) => {
+      const isPlaying = i === currentTrack && !audioEl.paused;
+      row.classList.toggle('playing', isPlaying);
+      const btn = row.querySelector('.track-play');
+      if(btn) btn.textContent = isPlaying ? '❚❚' : '▶';
+    });
+  }
+
+  function seekTrack(e, i){
+    if(i !== currentTrack || !TRACKS[i].src) return;
+    const wrap = e.currentTarget;
+    const rect = wrap.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    audioEl.currentTime = pct * audioEl.duration;
+  }
+
+  audioEl.addEventListener('timeupdate', () => {
+    if(currentTrack < 0) return;
+    const pct = (audioEl.currentTime / audioEl.duration) * 100 || 0;
+    const bar = document.getElementById('progress-' + currentTrack);
+    if(bar) bar.style.width = pct + '%';
+    const meta = document.getElementById('meta-' + currentTrack);
+    if(meta) meta.textContent = formatTime(audioEl.currentTime) + ' / ' + TRACKS[currentTrack].duration;
+  });
+
+  audioEl.addEventListener('ended', () => {
+    updatePlayingState();
+    const bar = document.getElementById('progress-' + currentTrack);
+    if(bar) bar.style.width = '0%';
+    const meta = document.getElementById('meta-' + currentTrack);
+    if(meta) meta.textContent = TRACKS[currentTrack].duration;
+  });
+
+  audioEl.addEventListener('pause', updatePlayingState);
+  audioEl.addEventListener('play', updatePlayingState);
+
+  renderTracks();
+
+  // ---------- Quiet background preload (warm browser cache) ----------
+  // Doesn't block or slow down initial page load — waits until the page
+  // has fully finished loading, then quietly fetches each track in the
+  // background so it's already cached by the time someone hits play.
+  // Uses fetch() rather than <audio preload> so it never competes with
+  // anything the page itself still needs to load first.
+  function warmAudioCache(){
+    TRACKS.forEach((track, i) => {
+      if(!track.src) return; // skip tracks without a real file yet
+      // Small stagger between requests so they don't all hit the network
+      // at once and compete with each other for bandwidth.
+      setTimeout(() => {
+        fetch(track.src, { method: 'GET', mode: 'cors', cache: 'force-cache' })
+          .catch(() => {
+            // Silent fail is fine here — worst case, first play just
+            // buffers normally instead of being instant.
+          });
+      }, i * 600);
+    });
+  }
+
+  if(document.readyState === 'complete'){
+    warmAudioCache();
+  } else {
+    window.addEventListener('load', warmAudioCache);
+  }
+
+  // ---------- Onsite swap (Jupiter Plugin) ----------
+  // Real build: replace HFC_MINT_ADDRESS below with the actual deployed
+  // $HFC token mint address on Solana. The plugin script is loaded via a
+  // <script> tag near the end of <body> (see jupiter-plugin script below);
+  // this function runs once that script has finished loading.
+  const HFC_MINT_ADDRESS = 'REPLACE_WITH_REAL_HFC_MINT_ADDRESS';
+  const SOL_MINT_ADDRESS = 'So11111111111111111111111111111111111111112';
+
+  function initJupiterSwap(){
+    if(typeof window.Jupiter === 'undefined'){
+      // Expected in this sandboxed preview — the plugin script can't load
+      // here. On a real deployed page this branch won't be hit.
+      return;
+    }
+    window.Jupiter.init({
+      displayMode: 'integrated',
+      integratedTargetId: 'jupiter-swap-container',
+      containerStyles: {
+        width: '100%',
+        maxHeight: '520px',
+        borderRadius: '8px',
+        overflow: 'auto'
+      },
+      formProps: {
+        initialInputMint: SOL_MINT_ADDRESS,
+        initialOutputMint: HFC_MINT_ADDRESS,
+        fixedOutputMint: true
+      }
+    });
+    // Widget renders itself into the container and replaces the fallback
+    // message automatically once initialized.
+    const fallback = document.getElementById('swapFallback');
+    if(fallback) fallback.style.display = 'none';
+  }
+
+  // Wait for the Jupiter script to finish loading (it's loaded with `defer`
+  // near the end of <body>), then initialize.
+  window.addEventListener('load', () => {
+    if(typeof window.Jupiter !== 'undefined'){
+      initJupiterSwap();
+    } else {
+      // Script may still be parsing; give it a brief moment before giving up
+      // and leaving the fallback message visible.
+      setTimeout(initJupiterSwap, 800);
+    }
+  });
+
+  // ---------- Shared lightbox (Art + Video) ----------
+  // Same illustrative-data approach as POSTS above — real build pulls this
+  // from the same source that renders the grid tiles.
+  const ART_ITEMS = [
+    { title: '"Plotting"', meta: 'Official Art', image: 'images/art-plotting.jpg' },
+    { title: 'Neon HFC', meta: 'official', image: 'images/fav-memecoin.jpg' },
+    { title: 'Inspirational', meta: 'Official Art', image: 'images/Inspirational.jpg' },
+    { title: 'Billboard', meta: 'official', image: 'images/billboard.jpg' },
+    { title: 'Be Consistent', meta: 'official', image: 'images/be-consistent.jpg' },
+    { title: 'Goal!', meta: 'Official Art', image: 'images/goal.jpg' },
+    { title: 'Place To Be', meta: 'official', image: 'images/place-to-be.jpg' },
+    { title: 'Not Selling', meta: 'official', image: 'images/not-selling.jpg' }
+  ];
+  const VIDEO_ITEMS = [
+    { title: 'Lore Trailer', meta: '4:02 · Promo', src: 'https://hfc-sol.s3.eu-north-1.amazonaws.com/promote-v1.mp4' },
+    { title: 'NIH Juicing Hamsters', meta: '1:39 · Lore', src: 'https://hfc-sol.s3.eu-north-1.amazonaws.com/video-7.mp4' },
+    { title: 'Training Montage', meta: '0:49 · Promo', src: 'https://hfc-sol.s3.eu-north-1.amazonaws.com/video-5.mp4' },
+    { title: 'Recap', meta: '0:40 · Meme', src: 'https://hfc-sol.s3.eu-north-1.amazonaws.com/video-8.mp4' },
+    { title: 'Steroid Szn Meme Cut', meta: '0:19 · Meme', src: 'https://hfc-sol.s3.eu-north-1.amazonaws.com/steroid-szn-meme-cut.mp4' },
+    { title: 'Origin Story Pt. 2', meta: '2:03 · Lore', src: 'https://hfc-sol.s3.eu-north-1.amazonaws.com/origin-story-2.mp4' },
+    { title: 'Album Announcement', meta: '0:35 · Promo', src: 'https://hfc-sol.s3.eu-north-1.amazonaws.com/album-announcement.mp4' },
+    { title: 'Fight Night Clip', meta: '0:08 · Meme', src: 'https://hfc-sol.s3.eu-north-1.amazonaws.com/fight-night-clip.mp4' }
+  ];
+
+
+  let lightboxType = 'art';
+  let lightboxIndex = 0;
+  const lightbox = document.getElementById('lightbox');
+  const lightboxFrame = document.getElementById('lightboxFrame');
+
+  function renderLightbox(){
+    const items = lightboxType === 'art' ? ART_ITEMS : VIDEO_ITEMS;
+    const item = items[lightboxIndex];
+    const lightboxImg = document.getElementById('lightboxImg');
+    const lightboxVideo = document.getElementById('lightboxVideo');
+    if(lightboxType === 'art'){
+      lightboxImg.src = item.image;
+      lightboxImg.alt = item.title;
+      lightboxImg.style.display = '';
+      lightboxVideo.pause();
+      lightboxVideo.removeAttribute('src');
+      lightboxVideo.load();
+      lightboxVideo.style.display = 'none';
+    } else {
+      lightboxImg.style.display = 'none';
+      lightboxVideo.style.display = '';
+      lightboxVideo.src = item.src;
+    }
+    document.getElementById('lightboxTitle').textContent = item.title;
+    document.getElementById('lightboxMeta').textContent = item.meta;
+    lightboxFrame.classList.toggle('video', lightboxType === 'video');
+  }
+
+  function openLightbox(type, index){
+    lightboxType = type;
+    lightboxIndex = index;
+    renderLightbox();
+    lightbox.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox(){
+    lightbox.classList.remove('open');
+    document.body.style.overflow = '';
+    const lightboxVideo = document.getElementById('lightboxVideo');
+    lightboxVideo.pause();
+  }
+
+  function navLightbox(dir){
+    const items = lightboxType === 'art' ? ART_ITEMS : VIDEO_ITEMS;
+    lightboxIndex = (lightboxIndex + dir + items.length) % items.length;
+    renderLightbox();
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if(!lightbox.classList.contains('open')) return;
+    if(e.key === 'Escape') closeLightbox();
+    if(e.key === 'ArrowRight') navLightbox(1);
+    if(e.key === 'ArrowLeft') navLightbox(-1);
+  });
+
+  // ---------- CA copy button ----------
+  function copyCA(){
+    const fullCA = 'F9nJsVxZGn3Az7HAXUrLQs2WaWHiKRbNRYfSpRR2UPRC'; // full address in production
+    const btn = document.getElementById('caCopyBtn');
+    const label = document.getElementById('caCopyLabel');
+    const icon = document.getElementById('caCopyIcon');
+    const prevIcon = icon.innerHTML;
+
+    function showCopiedState(){
+      btn.classList.add('copied');
+      label.textContent = 'Copied!';
+      icon.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        label.textContent = 'Copy';
+        icon.innerHTML = prevIcon;
+      }, 1600);
+    }
+
+    function fallbackCopy(){
+      // Works even when the Clipboard API is blocked (e.g. sandboxed iframes,
+      // insecure/http contexts, or missing clipboard-write permission).
+      const textarea = document.createElement('textarea');
+      textarea.value = fullCA;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand('copy');
+      } catch(err) {
+        console.error('Copy failed:', err);
+      }
+      document.body.removeChild(textarea);
+    }
+
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(fullCA)
+        .then(showCopiedState)
+        .catch(() => {
+          fallbackCopy();
+          showCopiedState();
+        });
+    } else {
+      fallbackCopy();
+      showCopiedState();
+    }
+  }
+</script>
+<!-- Jupiter Plugin: powers the embedded onsite swap widget in the Buy section.
+     Loaded with `defer` so it doesn't block initial page render. -->
+<script src="https://plugin.jup.ag/plugin-v1.js" data-preload defer></script>
+
+</body>
+</html>
